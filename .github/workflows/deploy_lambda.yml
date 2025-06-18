@@ -1,0 +1,41 @@
+name: Deploy Lambda Package to S3
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  upload-lambda:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -t build/
+
+      - name: Copy ETL script to build directory
+        run: cp etl/etl_co2.py build/
+
+      - name: Zip Lambda package
+        run: |
+          cd build
+          zip -r etl_co2.zip .
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+
+      - name: Upload ZIP to S3
+        run: aws s3 cp build/etl_co2.zip s3://doomsday-etl-code/etl_co2.zip
